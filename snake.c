@@ -68,28 +68,30 @@ void draw_snake_body(SDL_Renderer *renderer, SnakeNode *head, int clear) {
   }
 }
 
-void add_body(SnakeNode **head, int extra) {
-  Coordinate ext_pos = {(*head)->coor.x, (*head)->coor.y};
+static bool spawn = true;
+static Coordinate apple_coor = {0, 0};
 
-  SnakeNode *temp = *head;
-  for (int i = 0; i < extra; i++) {
-    ext_pos = (Coordinate){ext_pos.x - 1, ext_pos.y};
-    SnakeNode *newNode = (SnakeNode *)malloc(sizeof(SnakeNode));
-    newNode->coor = ext_pos;
-    newNode->next = NULL;
-    temp->next = newNode;
+Coordinate spawn_random_apple(SDL_Renderer *renderer) {
+  if (spawn == true) {
+    int randX = rand() % ((SCREEN_WIDTH / CELL_WIDTH - 2) - 1 + 1) + 1;
+    int randY = rand() % ((SCREEN_HEIGHT / CELL_WIDTH - 2) - 1 + 1) + 1;
 
-    temp = temp->next;
+    apple_coor = (Coordinate){randX, randY};
+    spawn = false;
   }
-}
 
-void add_apple(SDL_Renderer *renderer, Coordinate coor, SnakeNode *head) {
-  SDL_Rect rect = (SDL_Rect){coor.x * CELL_WIDTH, coor.y * CELL_WIDTH,
-                             CELL_WIDTH, CELL_WIDTH};
-  SDL_SetRenderDrawColor(renderer, 255, 0, 0, 1);
+  SDL_Rect rect = (SDL_Rect){apple_coor.x * CELL_WIDTH,
+                             apple_coor.y * CELL_WIDTH, CELL_WIDTH, CELL_WIDTH};
+  SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
   SDL_RenderFillRect(renderer, &rect);
 
-  if ((memcmp(&coor, &head->coor, sizeof(Coordinate))) == 0) {
+  return apple_coor;
+}
+
+void add_apple(SDL_Renderer *renderer, SnakeNode *head) {
+  Coordinate coor = spawn_random_apple(renderer);
+
+  if (coor.x == head->coor.x && coor.y == head->coor.y) {
     SnakeNode *temp = head;
 
     SnakeNode *newNode = (SnakeNode *)malloc(sizeof(SnakeNode));
@@ -100,8 +102,16 @@ void add_apple(SDL_Renderer *renderer, Coordinate coor, SnakeNode *head) {
       temp = temp->next;
     }
     temp->next = newNode;
+    spawn = true;
   }
 }
+
+// void check_collision_wall(SnakeNode *head) {
+//   if (head->coor.x < 1 || head->coor.x >= SCREEN_WIDTH / CELL_WIDTH - 1 ||
+//       head->coor.y < 1 || head->coor.y >= SCREEN_HEIGHT / CELL_WIDTH - 1) {
+//     SDL_Quit();
+//   }
+// }
 
 #define MOVE_RIGHT 1
 #define MOVE_LEFT 2
@@ -163,7 +173,6 @@ int main() {
   SDL_RenderClear(renderer);
 
   SnakeNode *head = init_snake((Coordinate){5, 2});
-  add_body(&head, 1);
 
   SnakeNode *temp = head;
   while (temp != NULL) {
@@ -181,9 +190,9 @@ int main() {
         running = 0;
       }
     }
-    add_apple(renderer, (Coordinate){2, 5}, head);
-
+    add_apple(renderer, head);
     move_snake(renderer, &head, keyState);
+    // check_collision_wall(head);
 
     draw_snake_body(renderer, head, 0);
     draw_grid(renderer);
